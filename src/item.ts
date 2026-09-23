@@ -24,9 +24,16 @@ export type IssueListMode = Exclude<ItemListMode, "review">
 
 export type ListModeFor<K extends ItemKind> = K extends "pullRequest" ? ItemListMode : IssueListMode
 
+export const itemStateFilters = ["open", "closed", "merged"] as const
+export type ItemStateFilter = (typeof itemStateFilters)[number]
+
+export const issueStateFilters = ["open", "closed"] as const
+export type IssueStateFilter = (typeof issueStateFilters)[number]
+
 export interface ItemListInput<K extends ItemKind = ItemKind> {
 	readonly kind: K
 	readonly mode: ListModeFor<K>
+	readonly state: K extends "issue" ? IssueStateFilter : ItemStateFilter
 	readonly repository: string | null
 	readonly cursor: string | null
 	readonly pageSize: number
@@ -66,11 +73,14 @@ const modeQualifier = (mode: ItemListMode): string | null => {
 
 // Build the GitHub search-query string for a given list input.
 //
-// Always restricts to open items in non-archived repositories, sorted by most
-// recently updated. Throws `IllegalQueryError` for `mode: "all"` with no
-// repository — that combination means "every PR/issue on GitHub" and is never
-// intentional.
+// Always restricts to the input's state (`is:open` / `is:closed` / `is:merged`)
+// in non-archived repositories, sorted by most recently updated. Throws
+// `IllegalQueryError` for `mode: "all"` with no repository — that combination
+// means "every PR/issue on GitHub" and is never intentional.
 export const searchQualifier = (input: ItemListInput): string => {
+	if (input.kind === "issue" && input.state === "merged") {
+		throw new IllegalQueryError(`issues do not support merged state; got kind=${input.kind}`)
+	}
 	if (input.mode === "all" && input.repository === null) {
 		throw new IllegalQueryError(`mode "all" requires a repository; got null for kind=${input.kind}`)
 	}
@@ -78,7 +88,7 @@ export const searchQualifier = (input: ItemListInput): string => {
 	const peopleQualifier = modeQualifier(input.mode)
 	if (peopleQualifier !== null) parts.push(peopleQualifier)
 	if (input.repository !== null) parts.push(`repo:${input.repository}`)
-	parts.push("is:open", "archived:false", "sort:updated-desc")
+	parts.push(`is:${input.state}`, "archived:false", "sort:updated-desc")
 	return parts.join(" ")
 }
 
@@ -86,12 +96,14 @@ export const searchQualifier = (input: ItemListInput): string => {
 // the service seam.
 export interface PullRequestQuery {
 	readonly mode: ItemListMode
+	readonly state: ItemStateFilter
 	readonly repository: string | null
 	readonly textFilter: string
 }
 
 export interface IssueQuery {
 	readonly mode: IssueListMode
+	readonly state: IssueStateFilter
 	readonly repository: string | null
 	readonly textFilter: string
 }
@@ -103,7 +115,12 @@ export type ItemQuery = PullRequestQuery | IssueQuery
 // filter input must not evict loaded pages.
 export const itemQueryCacheKey = (kind: ItemKind, query: ItemQuery): string => {
 	const repo = query.repository ?? "_"
-	return `${kind}:${query.mode}:${repo}`
+	// The repository stays the final `:`-separated segment so
+	// `itemQueryCacheKeyHasRepository` (which reads the last segment) keeps
+	// working. `open` keys stay byte-identical to avoid invalidating existing
+	// snapshot caches; non-open keys insert the state between mode and repo.
+	if (query.state === "open") return `${kind}:${query.mode}:${repo}`
+	return `${kind}:${query.mode}:${query.state}:${repo}`
 }
 
 export const itemQueryCacheKeyHasRepository = (key: string): boolean => key.split(":").at(-1) !== "_"
@@ -111,6 +128,7 @@ export const itemQueryCacheKeyHasRepository = (key: string): boolean => key.spli
 export const pullRequestQueryToListInput = (query: PullRequestQuery, cursor: string | null, pageSize: number): ItemListInput<"pullRequest"> => ({
 	kind: "pullRequest",
 	mode: query.mode,
+	state: query.state,
 	repository: query.repository,
 	cursor,
 	pageSize,
@@ -119,6 +137,7 @@ export const pullRequestQueryToListInput = (query: PullRequestQuery, cursor: str
 export const issueQueryToListInput = (query: IssueQuery, cursor: string | null, pageSize: number): ItemListInput<"issue"> => ({
 	kind: "issue",
 	mode: query.mode,
+	state: query.state,
 	repository: query.repository,
 	cursor,
 	pageSize,

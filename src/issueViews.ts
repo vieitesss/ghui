@@ -1,18 +1,19 @@
-import { type IssueListMode, type IssueQuery, issueQueryToListInput, type ItemListInput, itemQueryCacheKey } from "./item.js"
+import { type IssueListMode, type IssueQuery, type IssueStateFilter, issueQueryToListInput, type ItemListInput, itemQueryCacheKey } from "./item.js"
 
 // Mirrors `PullRequestView`. `Repository` means "all issues in this repo";
 // `Queue` carries the people qualifier (authored/assigned/mentioned). The
 // "all" mode is reserved for the Repository view, so Queue's mode excludes it.
 export type IssueView =
-	| { readonly _tag: "Repository"; readonly repository: string }
-	| { readonly _tag: "Queue"; readonly mode: Exclude<IssueListMode, "all">; readonly repository: string | null }
+	| { readonly _tag: "Repository"; readonly repository: string; readonly state: IssueStateFilter }
+	| { readonly _tag: "Queue"; readonly mode: Exclude<IssueListMode, "all">; readonly repository: string | null; readonly state: IssueStateFilter }
 
 export const initialIssueView = (repository: string | null = null): IssueView =>
-	repository ? { _tag: "Repository", repository } : { _tag: "Queue", mode: "authored", repository: null }
+	repository ? { _tag: "Repository", repository, state: "open" } : { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 
 export const issueViewMode = (view: IssueView): IssueListMode => (view._tag === "Repository" ? "all" : view.mode)
 export const issueViewRepository = (view: IssueView) => view.repository
-export const issueViewToQuery = (view: IssueView): IssueQuery => ({ mode: issueViewMode(view), repository: issueViewRepository(view), textFilter: "" })
+export const issueViewState = (view: IssueView): IssueStateFilter => view.state
+export const issueViewToQuery = (view: IssueView): IssueQuery => ({ mode: issueViewMode(view), state: issueViewState(view), repository: issueViewRepository(view), textFilter: "" })
 
 export const issueViewToListInput = (view: IssueView, cursor: string | null, pageSize: number): ItemListInput<"issue"> =>
 	issueQueryToListInput(issueViewToQuery(view), cursor, pageSize)
@@ -23,4 +24,9 @@ export const issueViewToListInput = (view: IssueView, cursor: string | null, pag
 export const issueViewCacheKey = (view: IssueView) => itemQueryCacheKey("issue", issueViewToQuery(view))
 
 export const issueViewEquals = (left: IssueView, right: IssueView) =>
-	left._tag === right._tag && issueViewMode(left) === issueViewMode(right) && left.repository === right.repository
+	left._tag === right._tag && issueViewMode(left) === issueViewMode(right) && left.repository === right.repository && left.state === right.state
+
+export const issueViewLabel = (view: IssueView) => {
+	const base = view._tag === "Repository" ? view.repository : view.mode
+	return view.state === "open" ? base : `${base} · ${view.state}`
+}
