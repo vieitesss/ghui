@@ -210,7 +210,7 @@ export const ownCommentReasonAtom = Atom.make((get): string | null => {
 // repository scope depends on runtime state.
 
 // Probe view: build the target view for a given queue-mode command.
-const queueViewFor = (mode: PullRequestUserQueueMode, repository: string | null): PullRequestView => ({ _tag: "Queue", mode, repository })
+const queueViewFor = (mode: PullRequestUserQueueMode, repository: string | null): PullRequestView => ({ _tag: "Queue", mode, repository, state: "open" })
 
 export const queueViewAlreadyActiveReasonAtom = (mode: PullRequestUserQueueMode): Atom.Atom<string | null> =>
 	Atom.make((get) => (viewEquals(get(activeViewAtom), queueViewFor(mode, get(selectedRepositoryAtom))) ? "Already showing this view." : null))

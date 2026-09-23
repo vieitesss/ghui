@@ -6,6 +6,22 @@ Terminal UI for keeping up with your open GitHub pull requests across repositori
 
 <img width="1420" height="856" alt="image" src="https://github.com/user-attachments/assets/5e560a4a-5887-4baa-a6d4-e1f4f0410c70" />
 
+## Fork differences
+
+This is [`vieitesss/ghui`](https://github.com/vieitesss/ghui), a fork of [`kitlangton/ghui`](https://github.com/kitlangton/ghui). It tracks upstream plus the change below.
+
+### Browse closed and merged items
+
+Upstream lists open items only — every list query hardcodes `is:open`, and the filter modal offers just `all` and `author:@me`. This fork adds a state axis so closed and merged items are reachable too:
+
+- Press `f` and pick a state preset: `closed`, `merged`, `author:@me closed`, `author:@me merged` for pull requests, and `closed`, `author:@me closed` for issues. The `open` and `author:@me` presets behave exactly as before.
+- The active filter bar shows the state (`closed`, `author:@me · merged`) so a non-open list is never mistaken for the open queue. Views that showed no bar upstream still show none.
+- `closed` follows GitHub's `is:closed` semantics and therefore includes merged pull requests. `merged` is pull-requests-only; issues have no merged state.
+- Repository-scope views keep using GitHub's repository connection, now with an explicit `states:` argument (`[OPEN]`, `[CLOSED, MERGED]`, `[MERGED]`), so the fast path and the search path return the same thing.
+- Cache keys are state-aware, but `open` keys stay byte-identical to upstream's, so upgrading does not invalidate an existing cache.
+
+Design notes: [`plans/closed-items-filter.md`](./plans/closed-items-filter.md).
+
 ## Install
 
 Homebrew is the recommended install path on macOS and Linux. It installs a standalone `ghui` binary, so you do not need Bun or npm at runtime.

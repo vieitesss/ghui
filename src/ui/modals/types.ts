@@ -1,5 +1,6 @@
 import { Data } from "effect"
 import type { DiffCommentSide, PullRequestLabel, PullRequestMergeInfo, PullRequestMergeKind, PullRequestMergeMethod, RepositoryMergeMethods } from "../../domain.js"
+import type { FilterOption } from "./FilterModal.js"
 import type { ThemeConfig, ThemeMode } from "../../themeConfig.js"
 import type { ThemeId, ThemeTone } from "../colors.js"
 import type { WorkspaceSurface } from "../../workspaceSurfaces.js"
@@ -108,6 +109,7 @@ export interface ChangedFilesModalState {
 export interface FilterModalState {
 	readonly surface: Extract<WorkspaceSurface, "pullRequests" | "issues">
 	readonly selectedIndex: number
+	readonly options: readonly FilterOption[]
 }
 
 export interface SubmitReviewModalState {
@@ -214,6 +216,7 @@ export const initialChangedFilesModalState: ChangedFilesModalState = {
 export const initialFilterModalState: FilterModalState = {
 	surface: "pullRequests",
 	selectedIndex: 0,
+	options: [],
 }
 
 export const initialSubmitReviewModalState: SubmitReviewModalState = {

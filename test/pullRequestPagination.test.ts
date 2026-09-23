@@ -38,7 +38,7 @@ const buildPage = (items: readonly PullRequestItem[], endCursor: string | null, 
 })
 
 const buildLoad = (items: readonly PullRequestItem[], endCursor: string | null, hasNextPage: boolean): PullRequestLoad => ({
-	view: { _tag: "Repository", repository: "anomalyco/opencode" },
+	view: { _tag: "Repository", repository: "anomalyco/opencode", state: "open" },
 	data: items,
 	fetchedAt: new Date("2026-05-12T00:00:00Z"),
 	endCursor,

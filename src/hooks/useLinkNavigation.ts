@@ -79,7 +79,7 @@ export const useLinkNavigation = ({
 			return true
 		}
 		if (selectedRepository !== repository) {
-			switchViewTo({ _tag: "Repository", repository })
+			switchViewTo({ _tag: "Repository", repository, state: "open" })
 			setActiveWorkspaceSurface("issues")
 			setSelectedIssueIndex(0)
 			flashNotice(`Opened ${repository}; #${number} will appear if it is loaded`)

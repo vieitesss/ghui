@@ -38,6 +38,15 @@ import type { WorkspaceSurface } from "../../workspaceSurfaces.js"
 
 type SetState<T> = (next: T | ((prev: T) => T)) => void
 
+// Filter-bar label for the active issue view. Open non-authored queues have
+// no label; the authored queue only keeps its author scope visible when
+// scoped to a repository (the global authored queue shows no FILTER bar).
+export const issueFilterLabelForView = (view: IssueView): string | null => {
+	if (view.state === "open") return view._tag === "Queue" && view.mode === "authored" && view.repository !== null ? "author:@me" : null
+	if (view._tag === "Queue" && view.mode === "authored" && view.repository !== null) return `author:@me · ${view.state}`
+	return view.state
+}
+
 export interface UseIssueSurfaceInput {
 	readonly username: string | null
 	readonly activeWorkspaceSurface: WorkspaceSurface
@@ -112,8 +121,8 @@ export const useIssueSurface = (input: UseIssueSurfaceInput): IssueSurfaceShell 
 	const issueLoad = useMemo(() => resolveIssueLoad(activeIssueView, issueQueueLoadCache, issuesResult), [activeIssueView, issueQueueLoadCache, issuesResult])
 
 	const selectedIssueRepository = issueViewRepository(activeIssueView)
-	const issueAuthorFilterActive = selectedIssueRepository !== null && activeIssueView._tag === "Queue" && activeIssueView.mode === "authored"
-	const issueActiveFilterLabel = issueAuthorFilterActive ? "author:@me" : null
+	const issueAuthorFilterActive = selectedIssueRepository !== null && activeIssueView._tag === "Queue" && activeIssueView.mode === "authored" && activeIssueView.state === "open"
+	const issueActiveFilterLabel = issueFilterLabelForView(activeIssueView)
 	const rawIssues: readonly IssueItem[] = issueLoad?.data ?? []
 	const issuesStatus: LoadStatus = issuesResult.waiting && rawIssues.length === 0 ? "loading" : AsyncResult.isFailure(issuesResult) && rawIssues.length === 0 ? "error" : "ready"
 	const issuesError = AsyncResult.isFailure(issuesResult) ? errorMessage(Cause.squash(issuesResult.cause)) : null

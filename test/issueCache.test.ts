@@ -18,14 +18,14 @@ const issue = (number: number): IssueItem => ({
 
 describe("freshIssueLoad", () => {
 	test("represents an authoritative empty refresh", () => {
-		const view = { _tag: "Repository", repository: "owner/repo" } as const
+		const view = { _tag: "Repository", repository: "owner/repo", state: "open" } as const
 		const next = freshIssueLoad(view, { items: [], endCursor: null, hasNextPage: false }, 100)
 
 		expect(next.data).toEqual([])
 	})
 
 	test("keeps pagination alive across a duplicate-only page when the cursor advances", () => {
-		const view = { _tag: "Repository", repository: "owner/repo" } as const
+		const view = { _tag: "Repository", repository: "owner/repo", state: "open" } as const
 		const current = freshIssueLoad(view, { items: [issue(1)], endCursor: "first", hasNextPage: true }, 100)
 		const next = nextIssueLoadAfterPage(current, { items: [issue(1)], endCursor: "second", hasNextPage: true }, 100)
 
@@ -34,7 +34,7 @@ describe("freshIssueLoad", () => {
 	})
 
 	test("stops first-page pagination at the configured Item limit", () => {
-		const view = { _tag: "Repository", repository: "owner/repo" } as const
+		const view = { _tag: "Repository", repository: "owner/repo", state: "open" } as const
 		const next = freshIssueLoad(view, { items: [issue(1), issue(2)], endCursor: "next", hasNextPage: true }, 2)
 
 		expect(next.hasNextPage).toBe(false)

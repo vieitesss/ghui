@@ -11,7 +11,7 @@ import type {
 	PullRequestReviewComment,
 	ReviewStatus,
 } from "../domain.js"
-import type { ItemListInput } from "../item.js"
+import type { IssueStateFilter, ItemListInput, ItemStateFilter } from "../item.js"
 import { mergeInfoFromPullRequest } from "../mergeActions.js"
 import { mockAuthor, mockBody, mockIssueTitle, mockLabels, mockPullRequestBranch, mockPullRequestTitle } from "./mockData.js"
 import { mockWorkflowRunDetails, mockWorkflowRuns } from "./mockRuns.js"
@@ -133,6 +133,64 @@ const filterByView = (mode: PullRequestQueueMode, repository: string | null, sou
 	return source.filter((item) => item.author !== username).slice(0, Math.ceil(source.length / 8))
 }
 
+const filterPullRequestsByState = (source: readonly PullRequestItem[], state: ItemStateFilter): readonly PullRequestItem[] => {
+	switch (state) {
+		case "open":
+			return source.filter((item) => item.state === "open")
+		case "closed":
+			// GitHub `is:closed` semantics: closed includes merged.
+			return source.filter((item) => item.state === "closed" || item.state === "merged")
+		case "merged":
+			return source.filter((item) => item.state === "merged")
+	}
+}
+
+const filterIssuesByState = (source: readonly IssueItem[], state: IssueStateFilter): readonly IssueItem[] => source.filter((issue) => issue.state === state)
+
+// A handful of closed/merged items so the closed/merged presets show data in
+// `GHUI_MOCK_*` mode. Appended after the (all-open) synthetic items so open
+// queues keep their exact `prCount` shape; the state filters below exclude
+// them from `open` results.
+const mockExtraPullRequests = (username: string, primaryRepository: string | null): readonly PullRequestItem[] => {
+	const repositories = [primaryRepository ?? MOCK_REPOSITORIES[0]!, MOCK_REPOSITORIES[1]!] as const
+	const states = ["closed", "merged", "closed", "merged"] as const
+	const options: Required<MockOptions> = { prCount: states.length, repoCount: 2, repository: null, repositories: [], username, seed: 0 }
+	return states.map((state, index) => {
+		const repository = repositories[index % repositories.length]!
+		const number = 9000 + index
+		return {
+			...buildPullRequest(index, options),
+			repository,
+			author: username,
+			number,
+			state,
+			closedAt: new Date(Date.now() - (index + 1) * 86_400_000),
+			url: `https://github.com/${repository}/pull/${number}`,
+		}
+	})
+}
+
+const mockExtraIssues = (username: string, primaryRepository: string | null): readonly IssueItem[] => {
+	const repositories = [primaryRepository ?? MOCK_REPOSITORIES[0]!, MOCK_REPOSITORIES[1]!] as const
+	return [0, 1].map((index) => {
+		const repository = repositories[index % repositories.length]!
+		const number = 9200 + index
+		return {
+			repository,
+			number,
+			state: "closed" as const,
+			title: mockIssueTitle(900 + index),
+			body: mockBody("issue", 900 + index),
+			author: username,
+			labels: mockLabels(900 + index),
+			commentCount: 1 + index,
+			createdAt: new Date(Date.now() - (index + 1) * 43_200_000),
+			updatedAt: new Date(Date.now() - (index + 1) * 3_600_000),
+			url: `https://github.com/${repository}/issues/${number}`,
+		}
+	})
+}
+
 const slicePage = <T>(source: readonly T[], cursor: string | null, pageSize: number): { items: readonly T[]; endCursor: string | null; hasNextPage: boolean } => {
 	const start = cursor ? Number.parseInt(cursor, 10) : 0
 	const safeStart = Number.isFinite(start) && start >= 0 ? start : 0
@@ -170,17 +228,22 @@ export const MockGitHubService = {
 		const fixture = loadMockFixtureSnapshot()
 		const strictUserScope = fixture !== null
 		const username = options.username ?? "mock-user"
-		const items = fixture ? fixture.pullRequests.slice(0, options.prCount) : buildMockPullRequests(options)
+		const rawItems = fixture ? fixture.pullRequests.slice(0, options.prCount) : buildMockPullRequests(options)
+		const extraPullRequests = mockExtraPullRequests(username, options.repository ?? null)
+		const items = [...rawItems, ...extraPullRequests]
 		const userItems = fixture
-			? buildMockPullRequests({
-					prCount: Math.max(8, Math.min(24, Math.ceil(options.prCount / 8))),
-					repoCount: options.repoCount ?? 4,
-					repository: null,
-					...(options.repositories ? { repositories: options.repositories } : {}),
-					username,
-				})
+			? [
+					...buildMockPullRequests({
+						prCount: Math.max(8, Math.min(24, Math.ceil(options.prCount / 8))),
+						repoCount: options.repoCount ?? 4,
+						repository: null,
+						...(options.repositories ? { repositories: options.repositories } : {}),
+						username,
+					}),
+					...extraPullRequests,
+				]
 			: items.map((item) => ({ ...item, author: username }))
-		const issues = fixture ? fixture.issues : buildMockIssues(options)
+		const issues = [...(fixture ? fixture.issues : buildMockIssues(options)), ...mockExtraIssues(username, options.repository ?? null)]
 		const fixturePullRequestsByKey = new Map(fixture?.pullRequests.map((item) => [`${item.repository}#${item.number}`, item]))
 		const fixtureIssuesByKey = new Map(fixture?.issues.map((item) => [`${item.repository}#${item.number}`, item]))
 		const pullRequestSource = (mode: PullRequestQueueMode, repository: string | null) => (mode === "repository" || repository ? items : userItems)
@@ -275,8 +338,8 @@ export const MockGitHubService = {
 				getPullRequestDetails: (repository, number) => Effect.succeed(findPullRequest(repository, number)),
 				getRepositoryDetails: (repository: string) => {
 					const seed = Array.from(repository).reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) >>> 0, 0)
-					const openIssueCount = issues.filter((issue) => issue.repository === repository).length
-					const openPullRequestCount = items.filter((item) => item.repository === repository).length
+					const openIssueCount = issues.filter((issue) => issue.repository === repository && issue.state === "open").length
+					const openPullRequestCount = items.filter((item) => item.repository === repository && item.state === "open").length
 					return Effect.succeed({
 						repository,
 						description: `Mock repository ${repository} — synthesized for offline development.`,
@@ -390,20 +453,19 @@ export const MockGitHubService = {
 				removeIssueLabel: () => Effect.void,
 				listPullRequestPage: (input: ItemListInput<"pullRequest">) => {
 					const queueMode = queueModeForListMode(input.mode)
-					const filtered = filterByView(queueMode, input.repository, pullRequestSource(queueMode, input.repository), username, strictUserScope)
-					return Effect.succeed(slicePage(filtered, input.cursor, input.pageSize))
+					const scoped = filterByView(queueMode, input.repository, pullRequestSource(queueMode, input.repository), username, strictUserScope)
+					return Effect.succeed(slicePage(filterPullRequestsByState(scoped, input.state), input.cursor, input.pageSize))
 				},
-				listIssuePage: (input: ItemListInput<"issue">) => Effect.succeed(slicePage(filterIssuesByMode(input.mode, input.repository, issues), input.cursor, input.pageSize)),
-				listAllPullRequests: (input: {
-					readonly kind: "pullRequest"
-					readonly mode: "all" | "authored" | "review" | "assigned" | "mentioned"
-					readonly repository: string | null
-				}) => {
+				listIssuePage: (input: ItemListInput<"issue">) =>
+					Effect.succeed(slicePage(filterIssuesByState(filterIssuesByMode(input.mode, input.repository, issues), input.state), input.cursor, input.pageSize)),
+				listAllPullRequests: (input: Omit<ItemListInput<"pullRequest">, "cursor" | "pageSize">) => {
 					const queueMode = queueModeForListMode(input.mode)
-					return Effect.succeed(filterByView(queueMode, input.repository, pullRequestSource(queueMode, input.repository), username, strictUserScope))
+					return Effect.succeed(
+						filterPullRequestsByState(filterByView(queueMode, input.repository, pullRequestSource(queueMode, input.repository), username, strictUserScope), input.state),
+					)
 				},
-				listAllIssues: (input: { readonly kind: "issue"; readonly mode: "all" | "authored" | "assigned" | "mentioned"; readonly repository: string | null }) =>
-					Effect.succeed(filterIssuesByMode(input.mode, input.repository, issues)),
+				listAllIssues: (input: Omit<ItemListInput<"issue">, "cursor" | "pageSize">) =>
+					Effect.succeed(filterIssuesByState(filterIssuesByMode(input.mode, input.repository, issues), input.state)),
 			}),
 		)
 	},

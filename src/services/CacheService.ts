@@ -18,6 +18,7 @@ import {
 } from "../domain.js"
 import type { IssueLoad } from "../issueLoad.js"
 import { type IssueView, issueViewCacheKey } from "../issueViews.js"
+import { issueStateFilters, itemStateFilters } from "../item.js"
 import { mergeCachedDetails } from "../pullRequestCache.js"
 import type { PullRequestLoad } from "../pullRequestLoad.js"
 import { type PullRequestView, viewCacheKey } from "../pullRequestViews.js"
@@ -90,8 +91,13 @@ const CachedPullRequestItemSchema = Schema.Struct({
 })
 
 const CachedPullRequestViewSchema = Schema.Union([
-	Schema.Struct({ _tag: Schema.tag("Queue"), mode: Schema.Literals(pullRequestQueueModes), repository: Schema.NullOr(Schema.String) }),
-	Schema.Struct({ _tag: Schema.tag("Repository"), repository: Schema.String }),
+	Schema.Struct({
+		_tag: Schema.tag("Queue"),
+		mode: Schema.Literals(pullRequestQueueModes),
+		repository: Schema.NullOr(Schema.String),
+		state: Schema.optional(Schema.Literals(itemStateFilters)),
+	}),
+	Schema.Struct({ _tag: Schema.tag("Repository"), repository: Schema.String, state: Schema.optional(Schema.Literals(itemStateFilters)) }),
 ])
 
 // IssueView's Queue mode excludes "all" — that mode is reserved for the
@@ -100,8 +106,13 @@ const CachedPullRequestViewSchema = Schema.Union([
 const issueQueueModes = ["authored", "assigned", "mentioned"] as const
 
 const CachedIssueViewSchema = Schema.Union([
-	Schema.Struct({ _tag: Schema.tag("Queue"), mode: Schema.Literals(issueQueueModes), repository: Schema.NullOr(Schema.String) }),
-	Schema.Struct({ _tag: Schema.tag("Repository"), repository: Schema.String }),
+	Schema.Struct({
+		_tag: Schema.tag("Queue"),
+		mode: Schema.Literals(issueQueueModes),
+		repository: Schema.NullOr(Schema.String),
+		state: Schema.optional(Schema.Literals(issueStateFilters)),
+	}),
+	Schema.Struct({ _tag: Schema.tag("Repository"), repository: Schema.String, state: Schema.optional(Schema.Literals(issueStateFilters)) }),
 ])
 
 const issueStates = ["open", "closed"] as const
@@ -314,7 +325,9 @@ const decodePullRequestViewJson = (json: string): Effect.Effect<PullRequestView,
 	Effect.gen(function* () {
 		const value = yield* parseJson("decodePullRequestView", json)
 		const view = yield* decodeCached("decodePullRequestView", CachedPullRequestViewSchema, value)
-		return view
+		// Snapshots written before the closed-items filter carry no state;
+		// they default to `open` (whose cache keys are byte-identical).
+		return { ...view, state: view.state ?? "open" } satisfies PullRequestView
 	})
 
 const decodeIssueJson = (json: string): Effect.Effect<IssueItem, CacheError> =>
@@ -330,7 +343,7 @@ const decodeIssueViewJson = (json: string): Effect.Effect<IssueView, CacheError>
 	Effect.gen(function* () {
 		const value = yield* parseJson("decodeIssueView", json)
 		const view = yield* decodeCached("decodeIssueView", CachedIssueViewSchema, value)
-		return view
+		return { ...view, state: view.state ?? "open" } satisfies IssueView
 	})
 
 const decodeStringArrayJson = (json: string): Effect.Effect<readonly string[], CacheError> =>

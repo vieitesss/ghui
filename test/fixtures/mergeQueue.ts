@@ -63,27 +63,31 @@ export const mergeQueueCommandLayer = (options: MergeQueueFixtureOptions, calls:
 				if (options.lookupFailure && args[0] === "api" && args[1] === "graphql") {
 					return Effect.fail(new CommandError({ command, args: [...args], detail: "Fixture queue lookup denied", cause: "fixture" }))
 				}
-				const response =
-					args[0] === "pr" && args[1] === "view"
-						? {
-								number: 42,
-								title: mergeQueuePullRequest.title,
-								state: "OPEN",
-								isDraft: options.isDraft ?? false,
-								mergeable: "MERGEABLE",
-								reviewDecision: "APPROVED",
-								autoMergeRequest: null,
-								statusCheckRollup: [
-									{ __typename: "CheckRun", name: "ci", status: options.pendingChecks ? "IN_PROGRESS" : "COMPLETED", conclusion: options.pendingChecks ? null : "SUCCESS" },
-								],
-							}
-						: args[0] === "repo" && args[1] === "view"
-							? { squashMergeAllowed: true, mergeCommitAllowed: true, rebaseMergeAllowed: true }
-							: args[0] === "api" && args[1] === "graphql"
-								? { data: { repository: { pullRequest: { viewerCanMergeAsAdmin: true, mergeQueue: options.queueEnabled ? { id: "fixture-queue" } : null } } } }
-								: args[0] === "api" && args[1] === "user"
-									? { login: "demo-user" }
-									: undefined
+				const query = args.find((arg) => arg.startsWith("query=")) ?? ""
+				const response = query.includes("RepositoryPullRequests")
+					? { data: { repository: { pullRequests: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }
+					: query.includes("search(query:")
+						? { data: { search: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } }
+						: args[0] === "pr" && args[1] === "view"
+							? {
+									number: 42,
+									title: mergeQueuePullRequest.title,
+									state: "OPEN",
+									isDraft: options.isDraft ?? false,
+									mergeable: "MERGEABLE",
+									reviewDecision: "APPROVED",
+									autoMergeRequest: null,
+									statusCheckRollup: [
+										{ __typename: "CheckRun", name: "ci", status: options.pendingChecks ? "IN_PROGRESS" : "COMPLETED", conclusion: options.pendingChecks ? null : "SUCCESS" },
+									],
+								}
+							: args[0] === "repo" && args[1] === "view"
+								? { squashMergeAllowed: true, mergeCommitAllowed: true, rebaseMergeAllowed: true }
+								: args[0] === "api" && args[1] === "graphql"
+									? { data: { repository: { pullRequest: { viewerCanMergeAsAdmin: true, mergeQueue: options.queueEnabled ? { id: "fixture-queue" } : null } } } }
+									: args[0] === "api" && args[1] === "user"
+										? { login: "demo-user" }
+										: undefined
 				if (response === undefined) return Effect.die(`Unexpected fixture query: ${args.join(" ")}`)
 				return Schema.decodeUnknownEffect(schema)(response)
 			},

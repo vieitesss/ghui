@@ -94,12 +94,24 @@ export const useCommandHandoffs = ({
 	useEffect(
 		() =>
 			registerHandoff("viewRepository", () => {
-				if (selectedRepository !== null) switchViewTo({ _tag: "Repository", repository: selectedRepository })
+				if (selectedRepository !== null) switchViewTo({ _tag: "Repository", repository: selectedRepository, state: "open" })
 			}),
 		[selectedRepository, switchViewTo],
 	)
-	useEffect(() => registerHandoff("viewAuthored", () => switchViewTo({ _tag: "Queue", mode: "authored", repository: selectedRepository })), [selectedRepository, switchViewTo])
-	useEffect(() => registerHandoff("viewReview", () => switchViewTo({ _tag: "Queue", mode: "review", repository: selectedRepository })), [selectedRepository, switchViewTo])
-	useEffect(() => registerHandoff("viewAssigned", () => switchViewTo({ _tag: "Queue", mode: "assigned", repository: selectedRepository })), [selectedRepository, switchViewTo])
-	useEffect(() => registerHandoff("viewMentioned", () => switchViewTo({ _tag: "Queue", mode: "mentioned", repository: selectedRepository })), [selectedRepository, switchViewTo])
+	useEffect(
+		() => registerHandoff("viewAuthored", () => switchViewTo({ _tag: "Queue", mode: "authored", repository: selectedRepository, state: "open" })),
+		[selectedRepository, switchViewTo],
+	)
+	useEffect(
+		() => registerHandoff("viewReview", () => switchViewTo({ _tag: "Queue", mode: "review", repository: selectedRepository, state: "open" })),
+		[selectedRepository, switchViewTo],
+	)
+	useEffect(
+		() => registerHandoff("viewAssigned", () => switchViewTo({ _tag: "Queue", mode: "assigned", repository: selectedRepository, state: "open" })),
+		[selectedRepository, switchViewTo],
+	)
+	useEffect(
+		() => registerHandoff("viewMentioned", () => switchViewTo({ _tag: "Queue", mode: "mentioned", repository: selectedRepository, state: "open" })),
+		[selectedRepository, switchViewTo],
+	)
 }

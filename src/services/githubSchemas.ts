@@ -395,9 +395,9 @@ query Issues($searchQuery: String!, $first: Int!, $after: String) {
 `
 
 export const repositoryPullRequestsQuery = `
-query RepositoryPullRequests($owner: String!, $name: String!, $first: Int!, $after: String) {
+query RepositoryPullRequests($owner: String!, $name: String!, $states: [PullRequestState!]!, $first: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
-    pullRequests(states: OPEN, first: $first, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
+    pullRequests(states: $states, first: $first, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
       nodes {${SUMMARY_FIELDS_FRAGMENT}
       }
       pageInfo { hasNextPage endCursor }

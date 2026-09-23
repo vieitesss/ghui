@@ -15,7 +15,7 @@ import {
 	type WorkflowRun,
 	type WorkflowRunDetails,
 } from "../domain.js"
-import { type ItemListInput, type ItemPage, searchQualifier } from "../item.js"
+import { type ItemListInput, type ItemPage, type ItemStateFilter, searchQualifier } from "../item.js"
 import { mergeActionCliArgs } from "../mergeActions.js"
 import { CommandError, CommandRunner, commandTelemetryAttributes, type JsonParseError } from "./CommandRunner.js"
 import {
@@ -162,6 +162,7 @@ export class GitHubService extends Context.Service<
 			// than `search`; it's faster and returns authoritative repo ordering.
 			const listRepositoryPullRequestPage = Effect.fn("GitHubService.listRepositoryPullRequestPage")(function* (input: {
 				repository: string
+				states: readonly ("OPEN" | "CLOSED" | "MERGED")[]
 				cursor: string | null
 				pageSize: number
 			}) {
@@ -179,6 +180,7 @@ export class GitHubService extends Context.Service<
 					`owner=${repo.owner}`,
 					"-F",
 					`name=${repo.name}`,
+					...input.states.flatMap((state) => ["-F", `states[]=${state}`]),
 					"-F",
 					`first=${input.pageSize}`,
 					...(input.cursor ? ["-F", `after=${input.cursor}`] : []),
@@ -194,10 +196,21 @@ export class GitHubService extends Context.Service<
 			// One page-fetcher per kind, accepting the unified `ItemListInput`.
 			// Mode "all" with a repository uses GitHub's repository connection (faster
 			// and authoritative ordering); everything else uses the search endpoint.
+			const repositoryPullRequestStates = (state: ItemStateFilter): readonly ("OPEN" | "CLOSED" | "MERGED")[] => {
+				switch (state) {
+					case "open":
+						return ["OPEN"]
+					case "closed":
+						return ["CLOSED", "MERGED"]
+					case "merged":
+						return ["MERGED"]
+				}
+			}
+
 			const listPullRequestPage = Effect.fn("GitHubService.listPullRequestPage")(function* (input: ItemListInput<"pullRequest">) {
 				const pageSize = Math.max(1, Math.min(100, input.pageSize))
 				if (input.mode === "all" && input.repository !== null) {
-					return yield* listRepositoryPullRequestPage({ repository: input.repository, cursor: input.cursor, pageSize })
+					return yield* listRepositoryPullRequestPage({ repository: input.repository, states: repositoryPullRequestStates(input.state), cursor: input.cursor, pageSize })
 				}
 				return yield* listPullRequestSearchPage({ ...input, pageSize })
 			})

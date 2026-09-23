@@ -8,6 +8,10 @@ import type { PullRequestView } from "./pullRequestViews.js"
 // the same repo as a Repository view; when the PR view is the global Queue,
 // the issue view falls back to the global "authored" queue.
 //
+// A merged PR is closed from the issue surface's point of view (issues have
+// no "merged" state), so PR `merged` maps to issue `closed`. The state
+// otherwise carries over unchanged.
+//
 // The function is total — every PR view has a defined issue counterpart —
 // which lets the call site set it unconditionally on every PR-view change
 // rather than checking "did the repository differ from the previous view".
@@ -15,7 +19,8 @@ import type { PullRequestView } from "./pullRequestViews.js"
 // where switching from Repository(opencode) to Queue(authored, opencode)
 // would skip the sync and leave the issue view stuck on a stale value.
 export const issueViewForPullRequestView = (view: PullRequestView): IssueView => {
-	if (view._tag === "Repository") return { _tag: "Repository", repository: view.repository }
-	if (view.repository === null) return { _tag: "Queue", mode: "authored", repository: null }
-	return { _tag: "Repository", repository: view.repository }
+	const state = view.state === "merged" ? "closed" : view.state
+	if (view._tag === "Repository") return { _tag: "Repository", repository: view.repository, state }
+	if (view.repository === null) return { _tag: "Queue", mode: "authored", repository: null, state }
+	return { _tag: "Repository", repository: view.repository, state }
 }

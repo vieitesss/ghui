@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { pullRequestQueueSearchQualifier } from "../src/domain.js"
-import { viewCacheKey } from "../src/pullRequestViews.js"
+import { activePullRequestViews, viewCacheKey, viewEquals, viewLabel } from "../src/pullRequestViews.js"
+import { issueViewCacheKey, issueViewEquals } from "../src/issueViews.js"
 
 describe("pullRequestQueueSearchQualifier", () => {
 	test("repository mode with repository → repo: qualifier", () => {
@@ -30,11 +31,53 @@ describe("pullRequestQueueSearchQualifier", () => {
 
 describe("viewCacheKey", () => {
 	test("repository view key uses the unified item-query cache key", () => {
-		expect(viewCacheKey({ _tag: "Repository", repository: "owner/name" })).toBe("pullRequest:all:owner/name")
+		expect(viewCacheKey({ _tag: "Repository", repository: "owner/name", state: "open" })).toBe("pullRequest:all:owner/name")
 	})
 
 	test("queue view key uses the unified item-query cache key", () => {
-		expect(viewCacheKey({ _tag: "Queue", mode: "authored", repository: null })).toBe("pullRequest:authored:_")
-		expect(viewCacheKey({ _tag: "Queue", mode: "review", repository: "owner/name" })).toBe("pullRequest:review:owner/name")
+		expect(viewCacheKey({ _tag: "Queue", mode: "authored", repository: null, state: "open" })).toBe("pullRequest:authored:_")
+		expect(viewCacheKey({ _tag: "Queue", mode: "review", repository: "owner/name", state: "open" })).toBe("pullRequest:review:owner/name")
+	})
+
+	test("open keys stay byte-identical so existing snapshot caches survive", () => {
+		expect(viewCacheKey({ _tag: "Repository", repository: "owner/name", state: "open" })).toBe("pullRequest:all:owner/name")
+		expect(issueViewCacheKey({ _tag: "Repository", repository: "owner/name", state: "open" })).toBe("issue:all:owner/name")
+	})
+
+	test("non-open keys stay distinct and keep the repository last", () => {
+		expect(viewCacheKey({ _tag: "Repository", repository: "owner/name", state: "closed" })).toBe("pullRequest:all:closed:owner/name")
+		expect(viewCacheKey({ _tag: "Queue", mode: "authored", repository: null, state: "merged" })).toBe("pullRequest:authored:merged:_")
+		expect(issueViewCacheKey({ _tag: "Repository", repository: "owner/name", state: "closed" })).toBe("issue:all:closed:owner/name")
+	})
+})
+
+describe("viewEquals", () => {
+	test("views differing only in state are not equal", () => {
+		expect(viewEquals({ _tag: "Repository", repository: "owner/name", state: "open" }, { _tag: "Repository", repository: "owner/name", state: "closed" })).toBe(false)
+		expect(viewEquals({ _tag: "Repository", repository: "owner/name", state: "open" }, { _tag: "Repository", repository: "owner/name", state: "open" })).toBe(true)
+		expect(issueViewEquals({ _tag: "Queue", mode: "authored", repository: null, state: "open" }, { _tag: "Queue", mode: "authored", repository: null, state: "closed" })).toBe(
+			false,
+		)
+	})
+})
+
+describe("viewLabel", () => {
+	test("open views keep the bare label", () => {
+		expect(viewLabel({ _tag: "Repository", repository: "owner/repo", state: "open" })).toBe("owner/repo")
+		expect(viewLabel({ _tag: "Queue", mode: "authored", repository: null, state: "open" })).toBe("authored")
+	})
+
+	test("non-open views append a short state suffix", () => {
+		expect(viewLabel({ _tag: "Repository", repository: "owner/repo", state: "closed" })).toBe("owner/repo · closed")
+		expect(viewLabel({ _tag: "Queue", mode: "authored", repository: null, state: "merged" })).toBe("authored · merged")
+	})
+})
+
+describe("activePullRequestViews", () => {
+	test("enumerated views preserve the active state", () => {
+		const views = activePullRequestViews({ _tag: "Repository", repository: "owner/repo", state: "closed" })
+		expect(views.length).toBeGreaterThan(1)
+		expect(views.every((view) => view.state === "closed")).toBe(true)
+		expect(views).toContainEqual({ _tag: "Repository", repository: "owner/repo", state: "closed" })
 	})
 })

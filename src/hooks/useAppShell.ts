@@ -460,7 +460,7 @@ export const useAppShell = ({ systemThemeGeneration }: UseAppShellInput) => {
 	})
 	const openSelectedRepository = () => {
 		if (!selectedRepositoryItem) return
-		switchViewTo({ _tag: "Repository", repository: selectedRepositoryItem.repository })
+		switchViewTo({ _tag: "Repository", repository: selectedRepositoryItem.repository, state: "open" })
 	}
 	const { openFilterModal, moveFilterSelection, applySelectedFilter } = useFilterModal({
 		activeWorkspaceSurface,
@@ -829,7 +829,7 @@ export const useAppShell = ({ systemThemeGeneration }: UseAppShellInput) => {
 			return
 		}
 		closeActiveModal()
-		switchViewTo({ _tag: "Repository", repository })
+		switchViewTo({ _tag: "Repository", repository, state: "open" })
 		flashNotice(`Opened ${repository}`)
 	}
 	usePasteRouter({

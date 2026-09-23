@@ -48,6 +48,39 @@ describe("GitHubService merge queue", () => {
 		)
 		expect(calls.filter((call) => call[1] === "pr")).toEqual([["gh", "pr", "merge", "42", "--repo", "example/queue-demo", "--disable-auto"]])
 	})
+
+	test.each([
+		["open", ["OPEN"]],
+		["closed", ["CLOSED", "MERGED"]],
+		["merged", ["MERGED"]],
+	] as const)("repo-scope %s passes states to the repository connection", async (state, expectedStates) => {
+		const calls: string[][] = []
+		const layer = GitHubService.layerNoDeps.pipe(Layer.provide(mergeQueueCommandLayer({ queueEnabled: true }, calls)))
+		await Effect.runPromise(
+			GitHubService.use((github) => github.listPullRequestPage({ kind: "pullRequest", mode: "all", repository: "example/queue-demo", state, cursor: null, pageSize: 10 })).pipe(
+				Effect.provide(layer),
+			),
+		)
+		const call = calls.find((candidate) => candidate[1] === "api" && candidate[2] === "graphql")
+		const query = call?.find((arg) => arg.startsWith("query=")) ?? ""
+		expect(query).toContain("pullRequests(states: $states")
+		expect(call?.filter((arg) => arg.startsWith("states[]=")).map((arg) => arg.slice("states[]=".length))).toEqual(expectedStates)
+	})
+
+	test("authored closed uses search rather than the repository connection", async () => {
+		const calls: string[][] = []
+		const layer = GitHubService.layerNoDeps.pipe(Layer.provide(mergeQueueCommandLayer({ queueEnabled: true }, calls)))
+		await Effect.runPromise(
+			GitHubService.use((github) =>
+				github.listPullRequestPage({ kind: "pullRequest", mode: "authored", repository: "example/queue-demo", state: "closed", cursor: null, pageSize: 10 }),
+			).pipe(Effect.provide(layer)),
+		)
+		const call = calls.find((candidate) => candidate[1] === "api" && candidate[2] === "graphql")
+		const query = call?.find((arg) => arg.startsWith("query=")) ?? ""
+		expect(query).toContain("search(query: $searchQuery")
+		expect(call).toContain("searchQuery=is:pr author:@me repo:example/queue-demo is:closed archived:false sort:updated-desc")
+		expect(call?.some((arg) => arg.startsWith("states[]="))).toBe(false)
+	})
 })
 
 describe("production merge flow", () => {

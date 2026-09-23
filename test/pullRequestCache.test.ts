@@ -127,7 +127,7 @@ describe("mergeCachedDetails", () => {
 
 describe("freshPullRequestLoad", () => {
 	test("accepts an authoritative empty refresh over cached rows", () => {
-		const view = { _tag: "Repository", repository: "owner/repo" } as const
+		const view = { _tag: "Repository", repository: "owner/repo", state: "open" } as const
 		const previous = { view, data: [pullRequest()], fetchedAt: new Date(), endCursor: "cursor", hasNextPage: false }
 		const next = freshPullRequestLoad(view, { items: [], endCursor: null, hasNextPage: false }, previous, 500)
 

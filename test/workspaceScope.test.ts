@@ -18,7 +18,7 @@ describe("Workspace Scope", () => {
 			import { selectedRepositoryAtom, workspaceScopeAtom, workspaceTabSurfacesAtom } from "./src/workspace/atoms.ts"
 			import { workspaceScopeForRepository } from "./src/workspaceScope.ts"
 			const registry = AtomRegistry.make()
-			registry.set(activeViewAtom, { _tag: "Repository", repository: "ignored/pull-request-view" })
+			registry.set(activeViewAtom, { _tag: "Repository", repository: "ignored/pull-request-view", state: "open" })
 			const user = [registry.get(selectedRepositoryAtom), registry.get(workspaceTabSurfacesAtom)]
 			registry.set(workspaceScopeAtom, workspaceScopeForRepository("kitlangton/ghui"))
 			const repository = [registry.get(selectedRepositoryAtom), registry.get(workspaceTabSurfacesAtom)]

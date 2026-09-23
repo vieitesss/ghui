@@ -111,7 +111,7 @@ describe("GitHubService list queries", () => {
 		const recorder: RecordedCall[] = []
 		const layer = GitHubService.layerNoDeps.pipe(Layer.provide(fakeCommandRunner(repositoryPullRequestListResponse, recorder)))
 		const page = await runWith(
-			GitHubService.use((github) => github.listPullRequestPage({ kind: "pullRequest", mode: "all", repository: "owner/repo", cursor: null, pageSize: 1 })),
+			GitHubService.use((github) => github.listPullRequestPage({ kind: "pullRequest", mode: "all", repository: "owner/repo", state: "open", cursor: null, pageSize: 1 })),
 			layer,
 		)
 
