@@ -143,7 +143,7 @@ export const useCommandRegistry = ({
 				title: `Open ${repository}`,
 				scope: "View",
 				subtitle: "Switch to this repository",
-				run: () => switchViewTo({ _tag: "Repository", repository }),
+				run: () => switchViewTo({ _tag: "Repository", repository, state: "open" }),
 			}),
 		]
 	})()

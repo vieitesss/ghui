@@ -29,8 +29,8 @@ import { viewCacheKey } from "../src/pullRequestViews.js"
 
 const REPO = process.argv[2] ?? "anomalyco/opencode"
 
-const repositoryView: PullRequestView = { _tag: "Repository", repository: REPO }
-const authoredView: PullRequestView = { _tag: "Queue", mode: "authored", repository: REPO }
+const repositoryView: PullRequestView = { _tag: "Repository", repository: REPO, state: "open" }
+const authoredView: PullRequestView = { _tag: "Queue", mode: "authored", repository: REPO, state: "open" }
 
 const registry = AtomRegistry.make()
 
@@ -99,7 +99,7 @@ const unsubDisplayed = registry.subscribe(displayedPullRequestsAtom, () => {})
 const unsubVisible = registry.subscribe(visiblePullRequestsAtom, () => {})
 
 // 1. Start in Queue authored global (the initial-view state ghui boots into).
-const globalAuthored: PullRequestView = { _tag: "Queue", mode: "authored", repository: null }
+const globalAuthored: PullRequestView = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 console.log(">> Setting activeView to Queue(authored, global)")
 registry.set(activeViewAtom, globalAuthored)
 await waitForResult(pullRequestsAtom)

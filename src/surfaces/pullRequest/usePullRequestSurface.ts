@@ -44,6 +44,15 @@ import type { WorkspaceSurface } from "../../workspaceSurfaces.js"
 
 type SetState<T> = (next: T | ((prev: T) => T)) => void
 
+// Filter-bar label for the active PR view. Open non-authored queues have no
+// label; the authored queue only keeps its author scope visible when scoped
+// to a repository (the global authored queue shows no FILTER bar).
+export const pullRequestFilterLabelForView = (view: PullRequestView): string | null => {
+	if (view.state === "open") return view._tag === "Queue" && view.mode === "authored" && view.repository !== null ? "author:@me" : null
+	if (view._tag === "Queue" && view.mode === "authored" && view.repository !== null) return `author:@me · ${view.state}`
+	return view.state
+}
+
 // Structural type for the bits of the OpenTUI renderer that
 // `useFocusReturnRefresh` needs — keeps the Surface decoupled from the
 // concrete `Renderer` class.
@@ -185,8 +194,7 @@ export const usePullRequestSurface = (input: UsePullRequestSurfaceInput): PullRe
 		pullRequestResult.waiting && pullRequestLoad === null ? "loading" : AsyncResult.isFailure(pullRequestResult) && pullRequestLoad === null ? "error" : "ready"
 	const pullRequestFetchInFlight = pullRequestResult.waiting
 	const selectedRepository = useAtomValue(selectedRepositoryAtom)
-	const pullRequestAuthorFilterActive = selectedRepository !== null && activeView._tag === "Queue" && activeView.mode === "authored"
-	const pullRequestActiveFilterLabel = pullRequestAuthorFilterActive ? "author:@me" : null
+	const pullRequestActiveFilterLabel = pullRequestFilterLabelForView(activeView)
 	const compactPullRequestRows = activeView._tag === "Queue" && activeView.mode === "authored"
 	const pullRequestError = AsyncResult.isFailure(pullRequestResult) ? errorMessage(Cause.squash(pullRequestResult.cause)) : null
 

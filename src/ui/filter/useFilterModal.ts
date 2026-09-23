@@ -2,7 +2,7 @@ import { devLog } from "../../devLog.js"
 import { type IssueView, issueViewEquals } from "../../issueViews.js"
 import type { PullRequestView } from "../../pullRequestViews.js"
 import type { WorkspaceSurface } from "../../workspaceSurfaces.js"
-import { filterOptions } from "../modals/FilterModal.js"
+import { filterOptionsFor } from "../modals/FilterModal.js"
 import type { FilterModalState } from "../modals/types.js"
 
 // Duplicated in App.tsx, useMergeFlow, and useThemeModal — small enough to
@@ -58,32 +58,38 @@ export const useFilterModal = ({
 }: UseFilterModalInput): UseFilterModalResult => {
 	const openFilterModal = () => {
 		if (!selectedRepository || (activeWorkspaceSurface !== "pullRequests" && activeWorkspaceSurface !== "issues")) return
-		const isMine =
-			activeWorkspaceSurface === "pullRequests"
-				? activeView._tag === "Queue" && activeView.mode === "authored"
-				: activeIssueView._tag === "Queue" && activeIssueView.mode === "authored"
+		const options = filterOptionsFor(activeWorkspaceSurface === "pullRequests" ? "pullRequest" : "issue")
+		const active = activeWorkspaceSurface === "pullRequests" ? activeView : activeIssueView
+		const scope = active._tag === "Queue" && active.mode === "authored" ? "mine" : "all"
+		const state = active.state
+		const match = options.findIndex((option) => option.scope === scope && option.state === state)
 		setFilterModal({
 			surface: activeWorkspaceSurface,
-			selectedIndex: Math.max(
-				0,
-				filterOptions.findIndex((option) => option.value === (isMine ? "mine" : "all")),
-			),
+			selectedIndex: Math.max(0, match),
+			options,
 		})
 	}
 
 	const moveFilterSelection = (delta: -1 | 1) => {
-		setFilterModal((current) => ({ ...current, selectedIndex: wrapIndex(current.selectedIndex + delta, filterOptions.length) }))
+		setFilterModal((current) => ({ ...current, selectedIndex: wrapIndex(current.selectedIndex + delta, current.options.length) }))
 	}
 
 	const applySelectedFilter = () => {
-		const option = filterOptions[filterModal.selectedIndex]
+		const option = filterModal.options[filterModal.selectedIndex]
 		devLog("applySelectedFilter", { option, surface: filterModal.surface, selectedRepository, activeView, activeIssueView })
-		if (!option) return
-		if (filterModal.surface === "pullRequests" && selectedRepository) {
-			switchViewTo(option.value === "mine" ? { _tag: "Queue", mode: "authored", repository: selectedRepository } : { _tag: "Repository", repository: selectedRepository })
-		} else if (filterModal.surface === "issues" && selectedRepository) {
+		if (!option || !selectedRepository) return
+		if (filterModal.surface === "pullRequests") {
+			switchViewTo(
+				option.scope === "mine"
+					? { _tag: "Queue", mode: "authored", repository: selectedRepository, state: option.state }
+					: { _tag: "Repository", repository: selectedRepository, state: option.state },
+			)
+		} else if (filterModal.surface === "issues") {
+			if (option.state === "merged") return
 			const nextView: IssueView =
-				option.value === "mine" ? { _tag: "Queue", mode: "authored", repository: selectedRepository } : { _tag: "Repository", repository: selectedRepository }
+				option.scope === "mine"
+					? { _tag: "Queue", mode: "authored", repository: selectedRepository, state: option.state }
+					: { _tag: "Repository", repository: selectedRepository, state: option.state }
 			if (!issueViewEquals(nextView, activeIssueView)) {
 				// Mirror the resets `switchViewTo` does for PR-side filter
 				// changes. Without these, the previous queue's load-more

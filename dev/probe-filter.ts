@@ -12,7 +12,7 @@ import { CommandRunner } from "../src/services/CommandRunner.js"
 import { GitHubService } from "../src/services/GitHubService.js"
 
 const repo = process.argv[2] ?? "anomalyco/opencode"
-const view: PullRequestView = { _tag: "Queue", mode: "authored", repository: repo }
+const view: PullRequestView = { _tag: "Queue", mode: "authored", repository: repo, state: "open" }
 const listInput = viewToListInput(view, null, 50)
 
 console.log("=== probe-filter ===")

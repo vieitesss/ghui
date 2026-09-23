@@ -168,7 +168,7 @@ export const useWorkspaceNavigation = (input: UseWorkspaceNavigationInput): Work
 		// a complete freeze. See the audit note in
 		// `plans/app-shell-deepening.md` for the underlying effect-atom
 		// dep-tracking quirk this is dodging.
-		switchViewTo({ _tag: "Queue", mode: "authored", repository: null })
+		switchViewTo({ _tag: "Queue", mode: "authored", repository: null, state: "open" })
 		return true
 	}
 
