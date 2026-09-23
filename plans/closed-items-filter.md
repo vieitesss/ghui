@@ -31,4 +31,4 @@ Every list query hardcodes `is:open`, and the filter modal only offers `all` / `
 
 ## Status
 
-In progress — feature-complete on fork branch feat/closed-items-filter
+Shipped — see vieitesss/ghui#1
