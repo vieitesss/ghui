@@ -11,7 +11,7 @@ describe("PR command derivations", () => {
 			import { activeViewAtom, queueLoadCacheAtom } from "./src/ui/pullRequests/atoms.ts"
 			import { workspaceSurfaceAtom } from "./src/workspace/atoms.ts"
 			const registry = AtomRegistry.make()
-			const view = { _tag: "Repository", repository: "owner/repo" }
+			const view = { _tag: "Repository", repository: "owner/repo", state: "open" }
 			const pr = { repository: "owner/repo", author: "kit", headRefOid: "abc", headRefName: "feature", baseRefName: "main", defaultBranchName: "main", number: 1, title: "Open PR", body: "", labels: [], additions: 0, deletions: 0, changedFiles: 0, state: "open", reviewStatus: "none", checkStatus: "none", checkSummary: null, checks: [], autoMergeEnabled: false, detailLoaded: false, createdAt: new Date(), updatedAt: new Date(), closedAt: null, url: "https://github.com/owner/repo/pull/1" }
 			registry.set(activeViewAtom, view)
 			registry.set(queueLoadCacheAtom, { "pullRequest:all:owner/repo": { view, data: [pr], fetchedAt: new Date(), endCursor: null, hasNextPage: false } })
@@ -32,7 +32,7 @@ describe("Issue command derivations", () => {
 			import { workspaceSurfaceAtom } from "./src/workspace/atoms.ts"
 			import { issueViewCacheKey } from "./src/issueViews.ts"
 			const registry = AtomRegistry.make()
-			const view = { _tag: "Queue", mode: "authored", repository: null }
+			const view = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 			const issue = { repository: "owner/repo", author: "kit", number: 1, state: "closed", title: "Closed", body: "", labels: [], commentCount: 0, createdAt: new Date(), updatedAt: new Date(), url: "1" }
 			registry.set(activeIssueViewAtom, view)
 			registry.set(issueQueueLoadCacheAtom, { [issueViewCacheKey(view)]: { view, data: [issue], fetchedAt: new Date(), endCursor: null, hasNextPage: false } })

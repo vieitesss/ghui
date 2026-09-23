@@ -26,14 +26,14 @@ describe("item view atoms", () => {
 				})
 			})
 			const prViews = [
-				{ _tag: "Queue", mode: "authored", repository: null },
-				{ _tag: "Repository", repository: "owner/repo" },
-				{ _tag: "Queue", mode: "authored", repository: "owner/repo" },
+				{ _tag: "Queue", mode: "authored", repository: null, state: "open" },
+				{ _tag: "Repository", repository: "owner/repo", state: "open" },
+				{ _tag: "Queue", mode: "authored", repository: "owner/repo", state: "open" },
 			]
 			const issueViews = [
-				{ _tag: "Queue", mode: "authored", repository: null },
-				{ _tag: "Repository", repository: "owner/repo" },
-				{ _tag: "Queue", mode: "authored", repository: "owner/repo" },
+				{ _tag: "Queue", mode: "authored", repository: null, state: "open" },
+				{ _tag: "Repository", repository: "owner/repo", state: "open" },
+				{ _tag: "Queue", mode: "authored", repository: "owner/repo", state: "open" },
 			]
 			for (const view of prViews) {
 				registry.set(activeViewAtom, view)
@@ -96,7 +96,7 @@ describe("item view atoms", () => {
 			import { filterQueryAtom } from "./src/ui/filter/atoms.ts"
 			import { activeViewAtom, pullRequestLoadMoreSlotAvailableAtom, pullRequestsAtom } from "./src/ui/pullRequests/atoms.ts"
 			const registry = AtomRegistry.make()
-			const view = { _tag: "Queue", mode: "authored", repository: null }
+			const view = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 			registry.set(activeViewAtom, view)
 			await Effect.runPromise(AtomRegistry.getResult(registry, pullRequestsAtom, { suspendOnWaiting: true }))
 			const before = registry.get(pullRequestLoadMoreSlotAvailableAtom)
@@ -123,8 +123,8 @@ describe("item view atoms", () => {
 			import { activeViewAtom, loadedPullRequestCountAtom, queueLoadCacheAtom, visiblePullRequestsAtom } from "./src/ui/pullRequests/atoms.ts"
 			import { viewCacheKey } from "./src/pullRequestViews.ts"
 			const registry = AtomRegistry.make()
-			const repositoryView = { _tag: "Repository", repository: "anomalyco/opencode" }
-			const authoredView = { _tag: "Queue", mode: "authored", repository: "anomalyco/opencode" }
+			const repositoryView = { _tag: "Repository", repository: "anomalyco/opencode", state: "open" }
+			const authoredView = { _tag: "Queue", mode: "authored", repository: "anomalyco/opencode", state: "open" }
 			const item = (number, author) => ({ repository: "anomalyco/opencode", author, number, url: String(number), createdAt: new Date(2026, 0, number), updatedAt: new Date(2026, 0, number) })
 			const load = (view, data) => ({ view, data, fetchedAt: new Date(), endCursor: null, hasNextPage: false })
 			registry.set(queueLoadCacheAtom, {
@@ -149,8 +149,8 @@ describe("item view atoms", () => {
 			import { activeIssueViewAtom, issueListAtom, issueQueueLoadCacheAtom, loadedIssueCountAtom } from "./src/ui/issues/atoms.ts"
 			import { issueViewCacheKey } from "./src/issueViews.ts"
 			const registry = AtomRegistry.make()
-			const repositoryView = { _tag: "Repository", repository: "anomalyco/opencode" }
-			const authoredView = { _tag: "Queue", mode: "authored", repository: "anomalyco/opencode" }
+			const repositoryView = { _tag: "Repository", repository: "anomalyco/opencode", state: "open" }
+			const authoredView = { _tag: "Queue", mode: "authored", repository: "anomalyco/opencode", state: "open" }
 			const item = (number, author) => ({ repository: "anomalyco/opencode", author, number, state: "open", title: String(number), body: "", labels: [], commentCount: 0, createdAt: new Date(2026, 0, number), updatedAt: new Date(2026, 0, number), url: String(number) })
 			const load = (view, data) => ({ view, data, fetchedAt: new Date(), endCursor: null, hasNextPage: false })
 			registry.set(issueQueueLoadCacheAtom, {
@@ -179,7 +179,7 @@ describe("item view atoms", () => {
 			import { selectedCommentSubjectAtom } from "./src/ui/comments/atoms.ts"
 			import { issueViewCacheKey } from "./src/issueViews.ts"
 			const registry = AtomRegistry.make()
-			const view = { _tag: "Queue", mode: "authored", repository: null }
+			const view = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 			const item = (number, title) => ({ repository: "anomalyco/opencode", author: "kitlangton", number, state: "open", title, body: "", labels: [], commentCount: 0, createdAt: new Date(2026, 0, number), updatedAt: new Date(2026, 0, number), url: String(number) })
 			registry.set(issueQueueLoadCacheAtom, { [issueViewCacheKey(view)]: { view, data: [item(1, "First"), item(2, "Needle")], fetchedAt: new Date(), endCursor: null, hasNextPage: false } })
 			registry.set(activeIssueViewAtom, view)
@@ -201,7 +201,7 @@ describe("item view atoms", () => {
 			import { workspaceSurfaceAtom } from "./src/workspace/atoms.ts"
 			import { issueViewCacheKey } from "./src/issueViews.ts"
 			const registry = AtomRegistry.make()
-			const view = { _tag: "Queue", mode: "authored", repository: null }
+			const view = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 			const issue = { repository: "owner/repo", author: "kit", number: 1, state: "open", title: "Issue", body: "", labels: [], commentCount: 0, createdAt: new Date(), updatedAt: new Date(), url: "1" }
 			registry.set(issueQueueLoadCacheAtom, { [issueViewCacheKey(view)]: { view, data: [issue], fetchedAt: new Date(), endCursor: "next", hasNextPage: true } })
 			registry.set(activeIssueViewAtom, view)
@@ -219,7 +219,7 @@ describe("item view atoms", () => {
 			import { activeIssueViewAtom, issueListAtom, issueOverridesAtom, issueQueueLoadCacheAtom } from "./src/ui/issues/atoms.ts"
 			import { issueViewCacheKey } from "./src/issueViews.ts"
 			const registry = AtomRegistry.make()
-			const view = { _tag: "Queue", mode: "authored", repository: null }
+			const view = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 			const issue = { repository: "owner/repo", author: "kit", number: 1, state: "open", title: "Issue", body: "", labels: [], commentCount: 0, createdAt: new Date(), updatedAt: new Date(), url: "1" }
 			registry.set(activeIssueViewAtom, view)
 			registry.set(issueQueueLoadCacheAtom, { [issueViewCacheKey(view)]: { view, data: [issue], fetchedAt: new Date(), endCursor: null, hasNextPage: false } })

@@ -24,7 +24,7 @@ const tempCachePath = async () => {
 	return join(dir, "cache.sqlite")
 }
 
-const view: PullRequestView = { _tag: "Queue", mode: "authored", repository: null }
+const view: PullRequestView = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 
 const pullRequest = (number: number, overrides: Partial<PullRequestItem> = {}): PullRequestItem => ({
 	repository: "owner/repo",
@@ -92,6 +92,36 @@ describe("CacheService", () => {
 		expect(cached?.data[0]?.labels).toEqual([{ name: "bug", color: "#d73a4a" }])
 		expect(cached?.endCursor).toBe("cursor-1")
 		expect(cached?.hasNextPage).toBe(true)
+	})
+
+	test("defaults legacy snapshots without state to open", async () => {
+		const filename = await tempCachePath()
+		await runCache(
+			filename,
+			Effect.gen(function* () {
+				const cache = yield* CacheService
+				yield* cache.writeQueue("alice", load([pullRequest(1)]))
+			}),
+		)
+
+		const db = new Database(filename)
+		db.run(
+			"update queue_snapshots set view_json = ? where viewer = ? and view_key = ?",
+			JSON.stringify({ _tag: "Queue", mode: "authored", repository: null }),
+			"alice",
+			"pullRequest:authored:_",
+		)
+		db.close()
+
+		const cached = await runCache(
+			filename,
+			Effect.gen(function* () {
+				const cache = yield* CacheService
+				return yield* cache.readQueue("alice", view)
+			}),
+		)
+
+		expect(cached?.view.state).toBe("open")
 	})
 
 	test("scopes user queues by viewer", async () => {
@@ -251,7 +281,7 @@ describe("CacheService", () => {
 
 	test("persists issue queue order and revives dates", async () => {
 		const filename = await tempCachePath()
-		const issueView: IssueView = { _tag: "Queue", mode: "authored", repository: null }
+		const issueView: IssueView = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 		const issue = (number: number, overrides: Partial<IssueItem> = {}): IssueItem => ({
 			repository: "owner/repo",
 			number,
@@ -300,8 +330,8 @@ describe("CacheService", () => {
 
 	test("issue queue cache is independent of pull request cache", async () => {
 		const filename = await tempCachePath()
-		const prView: PullRequestView = { _tag: "Queue", mode: "authored", repository: null }
-		const issueView: IssueView = { _tag: "Queue", mode: "authored", repository: null }
+		const prView: PullRequestView = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
+		const issueView: IssueView = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
 		const issue: IssueItem = {
 			repository: "owner/repo",
 			number: 99,
@@ -345,9 +375,9 @@ describe("CacheService", () => {
 
 	test("readRepoRollup aggregates pull requests and issues per viewer", async () => {
 		const filename = await tempCachePath()
-		const prView: PullRequestView = { _tag: "Queue", mode: "authored", repository: null }
-		const issueView: IssueView = { _tag: "Queue", mode: "authored", repository: null }
-		const otherViewerView: PullRequestView = { _tag: "Queue", mode: "review", repository: null }
+		const prView: PullRequestView = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
+		const issueView: IssueView = { _tag: "Queue", mode: "authored", repository: null, state: "open" }
+		const otherViewerView: PullRequestView = { _tag: "Queue", mode: "review", repository: null, state: "open" }
 
 		const prAlice = pullRequest(1, { repository: "owner/alpha", updatedAt: new Date("2026-04-10T00:00:00Z") })
 		const prAlice2 = pullRequest(2, { repository: "owner/alpha", updatedAt: new Date("2026-04-12T00:00:00Z") })
